@@ -1,0 +1,114 @@
+import numpy as np
+import pandas as pd
+from datascience import *
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+
+#importing table
+
+health_table = Table().read_table('Health_Risk_Dataset.csv')
+normal = health_table.where('Risk_Level', are.equal_to('Normal'))
+
+health_pd = pd.read_csv('Health_Risk_Dataset.csv')
+
+#features
+feature_cols = ['Respiratory_Rate', 'Oxygen_Saturation', 'O2_Scale', 
+                'Systolic_BP', 'Heart_Rate', 'Temperature', 
+                'Consciousness', 'On_Oxygen']
+
+X = health_pd[feature_cols]
+
+categorical_cols = ['Consciousness', 'On_Oxygen', 'O2_Scale']
+X = pd.get_dummies(X, columns=categorical_cols)
+
+#target
+y = health_pd['Risk_Level']
+
+#Split data
+train_X, val_X, train_y, val_y = train_test_split(X, y, test_size=0.2, random_state=0)
+
+rf_model = RandomForestClassifier(random_state=0, n_estimators=100)
+rf_model.fit(train_X, train_y)
+
+#feature importance values
+importances = rf_model.feature_importances_
+
+#making the weights, multiplying the array by 100 because we are on an 100 points system
+
+weights = (importances * 100)
+resp_weight = weights.item(0)
+oxy_weight = weights.item(1)
+o2scale_weight = weights.item(2)
+bp_weight = weights.item(3)
+hr_weight = weights.item(4)
+temp_weight = weights.item(5)
+conc_weight  = weights.item(6) + weights.item(7) + weights.item(8) + weights.item(9) + weights.item(10)
+onoxy_weight = weights.item(11) + weights.item(12)
+
+#normal thresholds
+
+normal_hr = np.mean(normal.column('Heart_Rate'))
+normal_resp_rate = np.mean(normal.column('Respiratory_Rate'))
+normal_oxysat = np.mean(normal.column('Oxygen_Saturation'))
+normal_systbp = np.mean(normal.column('Systolic_BP'))
+normal_temp = np.mean(normal.column('Temperature'))
+
+#functions to find percentile
+#the more function for when the value being more is abnormal, the less function for when the value being less is abnormal
+
+def percentile_more(measurement, table, column):
+    return np.sum(measurement >= table.column(column)) / len(table.column(column))
+
+def percentile_less(measurement, table, column):
+    return np.sum(measurement <= table.column(column)) / len(table.column(column))
+
+#big meaty function
+#multiplying the percentile by the weight and adding it to points if they are above/below the threshold
+#for categorical variables adding the points according to importance or if the condition is met
+
+def points(Patient_ID):
+    patient = health_table.where('Patient_ID', are.equal_to(Patient_ID))
+    points = 0
+    if patient.column('Respiratory_Rate') > normal_resp_rate:
+        points = percentile_more(patient.column('Respiratory_Rate').item(0), health_table, 'Respiratory_Rate') * resp_weight
+    if patient.column('Heart_Rate') > normal_hr:
+        points = points + percentile_more(patient.column('Heart_Rate').item(0), health_table, 'Heart_Rate') * hr_weight
+    if patient.column('Oxygen_Saturation') < normal_oxysat:
+        points = points + percentile_less(patient.column('Oxygen_Saturation').item(0), health_table, 'Oxygen_Saturation') * oxy_weight
+    if patient.column('Systolic_BP') < normal_systbp:
+        points = points + percentile_less(patient.column('Systolic_BP').item(0), health_table, 'Systolic_BP') * bp_weight
+    if patient.column('Systolic_BP') > normal_temp:
+         points = points + percentile_less(patient.column('Temperature').item(0), health_table, 'Temperature') * temp_weight
+    if patient.column('O2_Scale').item(0) == 2:
+        points = points + o2scale_weight
+    if patient.column('Consciousness') == 'C':
+        points = points + conc_weight
+    elif patient.column('Consciousness') == 'U':
+        points = points + conc_weight * 3/4
+    elif patient.column('Consciousness') == 'P':
+        points = points + conc_weight * 2/4
+    elif patient.column('Consciousness') == 'V':
+        points = points + conc_weight * 1/4
+    elif patient.column('Consciousness') == 'A':
+        points = points
+    if patient.column('On_Oxygen') == 1:
+        points = points + onoxy_weight
+    return points
+
+#reclassification function
+
+def reclassification(points):
+    if points >= 80:
+        return "Urgent"
+    elif points >= 60:
+        return "High"
+    elif points >= 40:
+        return "Moderate"
+    elif points >= 20:
+        return "Low"
+    else:
+        return "Normal"
+    
+health_reclassified = point_table.with_column('Point Reclassification', point_table.apply(reclassification, 'Points')
+).relabeled('Risk_Level', 'Original Risk')
+print(health_reclassified)
