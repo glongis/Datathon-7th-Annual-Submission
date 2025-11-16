@@ -1,0 +1,31 @@
+With our solution to the 7th annual Datathon for social good, we are going to provide a model that will allow healthcare to further classify individuals' health based on vital signs. 
+
+Here, we use a machine learning model to provide a real-time patient “risk” score out of 100, which is then used to further classify individuals into more articulated categories. The higher the score, the more urgent their condition will be classified.
+
+How will this model work?
+We were provided a dataset that has a list of patients with their vital signs such as heart rate, Oxygen Saturation, Systolic Blood Pressure, et cetera and their “risk score” that they were assigned either normal, medium, or high. 
+
+The key to determine the perfect model in order to predict a person’s risk score is to first find out which vital signs contribute the most to their condition of health that they were assigned so we can figure out how to “weigh” them accordingly. Thus, we broke this model down into several phases. We also used several libraries such as Numpy (for numerical operations), Matplotlib (for plotting), DataScience (for table manipulation), Pandas, and Scikit Learn (to utilize algorithms)
+
+We also found out that for certain vital signs, such as oxygen saturation, lower values usually indicate higher risk while the opposite is true for other vital signs such as respiratory rates
+Our model’s phases:
+
+Phase 1: Weights
+Of course, we know that some symptoms contribute towards a patient being at higher risk than others. Thus, we need to consider adding more points to the total risk score for symptoms that are more indicative of health risk and less points for symptoms that are less indicative of health risk. In order to do so, we decided to do a random forest classifier. We first have numerical features such as the respiratory rate, and categorical features such as consciousness. 
+
+We managed to find out that the vital signs that are the most indicative of risk level are Oxygen Saturation, Heart Rate, and Systolic Blood Pressure, (being 21.5 percent 20.6 percent and 18.5 percent respectively). All of the respective maximum possible scores of all the categories should add up to one hundred with the higher the score being the higher the risk.
+
+To reinforce our findings, we decided to consult some secondary sources and studies. A study done in Sweden found that there is a high association between a combination of low blood oxygen saturation, high heart rate, and low Systolic Blood pressure and seven day mortality.
+
+
+Phase 2: Percentile/means hybrid system
+Then, we needed to consider how to scale the amount of points a person can get in each category depending on their vital signs. That is where we use percentiles and means. Of course, if a person’s vitals are operating at a normal range, we would not consider that an abnormality in any way, thus if the person’s vitals falls below or above the mean amount that is considered “normal risk level” then that person automatically gets zero points in that respective area. However, if an individual scores higher than the normal mean, then a multiplier will be assigned based on the percentile that he lies in with respect to the rest of the population. For example, if he is in the 75th percentile then he will be assigned a multiplier of 0.75. Note that with certain variables which a lower amount indicates high risk such as oxygen saturation, we simply subtract the multiplier from one and assign that as a multiplier instead.
+
+Phase 3: Score assignment and check
+Everything comes together. We multiply the total weighed scores by their respective multipliers and finally, we get a total number that is up to one hundred.
+
+Then, we perform a check on how the new points system holds up with the original classifications, and we see here that it does encompass the four risk levels really well.
+
+Finally, we add the scores into the original table and we reclassify the patients using more classes based on certain ranges in the points system and, while implemented, have patients classified as “urgent” being prioritized over other patients when it comes to treatments.
+
+We see this algorithm have widespread applications to the healthcare industry. We similarly took into account the ethical obligations that this model should follow. For example, we only used vital health signs that are universal to every human, which are unbiased indicators of a patient's health. By not taking into account factors such as ethnicity, age, gender, or access to healthcare, our model was trained to purely assess the patients health condition. We similarly coded it so that all we would need is an anonymous identifier for patients that can be set by the hospital using the program. 
